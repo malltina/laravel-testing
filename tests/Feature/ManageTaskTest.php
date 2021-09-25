@@ -8,6 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Foundation\Testing\WithFaker;
 use App\Models\Task;
 use function route;
+use App\Models\User;
 
 class ManageTaskTest extends TestCase
 {
@@ -16,46 +17,78 @@ class ManageTaskTest extends TestCase
     use WithFaker;
 
     /** @test */
-    public function task_can_store()
+    public function user_can_see_all_self_task()
     {
-        $attributes = Task::factory()->raw();
-        $response   = $this->postJson(route('tasks.store'), $attributes);
-        $response->assertStatus(Response::HTTP_CREATED);
+        $user = User::factory()->create();
+        Task::factory(3)->create(['author_id' => $user->id]);
+        Task::factory(2)->create();
+        $response = $this->actingAs($user)
+                         ->getJson(route('tasks.index'))
+                         ->assertOk();
+        $response->assertJsonCount(3);
+        $this->assertDatabaseCount('tasks', 5);
+    }
+
+    /** @test */
+    public function user_can_create_task()
+    {
+        $user       = User::factory()->create();
+        $attributes = Task::factory()->raw(['author_id' => null]);
+        $this->actingAs($user)
+             ->postJson(route('tasks.store'), $attributes)
+             ->assertStatus(Response::HTTP_CREATED);
+        $attributes['author_id'] = auth()->id();
         $this->assertDatabaseHas('tasks', $attributes);
+    }
+
+    /** @test */
+    public function guest_user_cannot_create_task()
+    {
+        $attributes = Task::factory()->raw(['author_id' => null]);
+        $this->postJson(route('tasks.store'), $attributes)
+             ->assertUnauthorized();
+        unset($attributes['author_id']);
+        $this->assertDatabaseMissing('tasks', $attributes);
     }
 
     /** @test */
     public function task_can_update()
     {
-        $task             = Task::factory()->create();
+        $user             = User::factory()->create();
+        $task             = Task::factory()->create(['author_id' => $user->id]);
         $updateAttributes = [
             'title' => $this->faker->sentence(2),
         ];
-        $response         = $this->patchJson(route('tasks.update', $task), $updateAttributes);
-        $response->assertStatus(Response::HTTP_OK);
+        $this->actingAs($user)
+             ->patchJson(route('tasks.update', $task), $updateAttributes)
+             ->assertOk();
         $this->assertDatabaseHas('tasks', $updateAttributes);
     }
 
     /** @test */
     public function task_can_delete()
     {
-        $task     = Task::factory()->create();
-        $response = $this->deleteJson(route('tasks.destroy', $task));
-        $response->assertStatus(Response::HTTP_OK);
-        $this->assertDatabaseMissing('tasks',$task->only('id'));
+        $user = User::factory()->create();
+        $task = Task::factory()->create(['author_id' => $user->id]);
+        $this->actingAs($user)
+             ->deleteJson(route('tasks.destroy', $task))
+             ->assertOk();
+        $this->assertDatabaseMissing('tasks', $task->only('id'));
     }
 
     /**
      * @test
      * @dataProvider dataProvider
      */
-    public function when_stor_task_title_required($attributes)
+    public function when_store_task_title_required($attributes)
     {
-        $response = $this->postJson(route('tasks.store'), $attributes);
-        $response->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $user = User::factory()->create();
+        $this->actingAs($user)
+             ->postJson(route('tasks.store'), $attributes)
+             ->assertUnprocessable();
     }
 
-    public function dataProvider()
+    public function dataProvider() : array
     {
         return [
             [

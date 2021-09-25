@@ -11,4 +11,9 @@ class Task extends Model
     use HasFactory;
 
     protected $fillable = ['title', 'body'];
+
+//    public function author()
+//    {
+//        return $this->belongsTo(User::class);
+//    }
 }
