@@ -9,6 +9,7 @@ use App\Models\Task;
 use Symfony\Component\HttpFoundation\Response;
 use function auth;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Resources\TaskResource;
 
 class TaskController extends Controller
 {
@@ -19,7 +20,7 @@ class TaskController extends Controller
 //        $tasks = Task::where('author_id', Auth::id())->get();
         $tasks = Auth::user()->tasks; //collection
 
-        return response()->json($tasks, Response::HTTP_OK);
+        return response()->json(TaskResource::collection($tasks), Response::HTTP_OK);
     }
 
     public function store(Request $request)
@@ -33,7 +34,7 @@ class TaskController extends Controller
             'body'  => $request->get('body'),
         ]);
 
-        return response()->json($task, Response::HTTP_CREATED);
+        return response()->json(TaskResource::make($task->load('author')), Response::HTTP_CREATED);
     }
 
     public function update(Task $task, Request $request)

@@ -8,6 +8,7 @@ use App\Models\User;
 
 class TaskFactory extends Factory
 {
+
     /**
      * The name of the factory's corresponding model.
      *
@@ -23,9 +24,10 @@ class TaskFactory extends Factory
     public function definition()
     {
         return [
-            'title' => $this->faker->sentence(2),
-            'body'  => $this->faker->text,
-            'author_id'=> User::factory()->create()->id
+            'title'        => $this->faker->sentence(2),
+            'body'         => $this->faker->text(5),
+            'published_at' => $this->faker->dateTime,
+            'author_id'    => User::factory()->create()->id,
         ];
     }
 }
